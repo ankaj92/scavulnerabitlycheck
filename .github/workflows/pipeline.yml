@@ -1,4 +1,4 @@
-name: SCA with OWASP Dependency-Check
+name: Java Gradle SCA + SBOM Pipeline
 
 on:
   push:
@@ -7,26 +7,65 @@ on:
     branches: [main]
 
 jobs:
-  dependency-check:
+  sca-java-gradle:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up JDK 17
+      - name: Set up Java
         uses: actions/setup-java@v3
         with:
-          java-version: "17"
           distribution: "temurin"
+          java-version: "17"
 
-      - name: Grant execute permissions for gradlew
-        run: chmod +x ./gradlew
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-      - name: Run OWASP Dependency-Check
-        run: ./gradlew dependencyCheckAnalyze
+      - name: Build with Gradle
+        run: ./gradlew build -x test
 
-      - name: Upload SCA report
-        uses: actions/upload-artifact@v4
+      - name: Install Snyk CLI
+        run: |
+          curl -Lo snyk https://static.snyk.io/cli/latest/snyk-linux
+          chmod +x snyk
+          sudo mv snyk /usr/local/bin
+
+      - name: Run Snyk Test and Save Report
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          snyk test --all-projects --json > snyk-report.json
+          snyk test --all-projects --json-file-output=snyk-report.json
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM using Syft
+        run: |
+          syft dir:. -o json > sbom.json
+          syft dir:. -o spdx-json > sbom.spdx.json
+
+      - name: Install Grype
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Scan SBOM using Grype and Save Reports
+        run: |
+          grype sbom:sbom.json -o json > grype-report.json
+          grype sbom:sbom.json -o table > grype-report.txt
+          grype sbom:sbom.json -o sarif > grype-report.sarif
+
+      - name: Upload Scan Reports as Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: dependency-check-report
-          path: build/reports/dependency-check-report.html
+          name: scan-reports
+          path: |
+            snyk-report.json
+            sbom.json
+            sbom.spdx.json
+            grype-report.json
+            grype-report.txt
+            grype-report.sarif
