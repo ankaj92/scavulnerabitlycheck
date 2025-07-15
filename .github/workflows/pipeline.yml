@@ -59,7 +59,7 @@ jobs:
           grype sbom:sbom.json -o sarif > grype-report.sarif
 
       - name: Upload Scan Reports as Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: scan-reports
           path: |
@@ -69,3 +69,4 @@ jobs:
             grype-report.json
             grype-report.txt
             grype-report.sarif
+s
