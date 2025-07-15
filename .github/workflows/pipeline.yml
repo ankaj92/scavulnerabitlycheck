@@ -69,4 +69,3 @@ jobs:
             grype-report.json
             grype-report.txt
             grype-report.sarif
-s
