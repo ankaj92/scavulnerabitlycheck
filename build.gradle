@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+    id 'org.owasp.dependencycheck' version '8.4.2'
+    id 'jacoco'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}
+
+dependencyCheck {
+    failBuildOnCVSS = 7
+    formats = ['HTML', 'XML', 'JSON']
+}
+
+jacocoTestReport {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
